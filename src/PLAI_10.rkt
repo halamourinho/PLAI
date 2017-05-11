@@ -11,7 +11,8 @@
     [seqC (b1 : ExprC) (b2 : ExprC)]
     [objC (ns : (listof symbol)) (es : (listof ExprC))]
     [msgC (o : ExprC) (n : symbol)]
-    [msgS (o : ExprC) (n : symbol) (a : ExprC)])
+    [msgS (o : ExprC) (n : symbol) (a : ExprC)]
+    [letC (var : symbol) (val : ExprC) (e : ExprC)])
 
 (define new-loc
     (let ([n (box 0)])
@@ -99,7 +100,8 @@
                                     (v*s-v (interp e env sto))) ;suppose there is no set! in es
                                 es)) sto)]
         [msgC (o n) (v*s (lookup-msg n (v*s-v (interp o env sto))) sto)]
-        [msgS (o n a) (interp (appC (msgC o n) a) env sto)]))
+        [msgS (o n a) (interp (appC (msgC o n) a) env sto)]
+        [letC (var val e) (interp (appC (lamC (var e)) val) env sto)]))
 
 (define (opV [op : (number number -> number)])
     (lambda ([l : Value] [r : Value])
