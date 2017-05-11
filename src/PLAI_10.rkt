@@ -101,7 +101,7 @@
                                 es)) sto)]
         [msgC (o n) (v*s (lookup-msg n (v*s-v (interp o env sto))) sto)]
         [msgS (o n a) (interp (appC (msgC o n) a) env sto)]
-        [letC (var val e) (interp (appC (lamC (var e)) val) env sto)]))
+        [letC (var val e) (interp (appC (lamC var e) val) env sto)]))
 
 (define (opV [op : (number number -> number)])
     (lambda ([l : Value] [r : Value])
@@ -131,6 +131,11 @@
             mt-env mt-store))
     (numV 4))
 
-
+(test (v*s-v (interp (letC 'o (objC (list 'add1 'sub1)
+                                (list (lamC 'x (plusC (idC 'x) (numC 1)))
+                                        (lamC 'x (plusC (idC 'x) (numC -1))))) 
+                            (msgS (idC 'o) 'add1 (numC 3)))
+            mt-env mt-store))
+    (numV 4))
 
 
