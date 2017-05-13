@@ -21,7 +21,7 @@
     ((some-v (hash-ref table g)) n))
 
 (define-syntax (cps e)
-    (syntax-case e (with rec lam cnd seq set quote display read-number)
+    (syntax-case e (with rec lam cnd seq set quote display read-number generator let/cc)
         [(_ (with (v e) b))
             #'(cps ((lam (v) b) e))]
         [(_ (rec (v f) b))
@@ -48,6 +48,27 @@
             #'(lambda (k)
                 ((cps prompt) (lambda (pv)
                                 (read-number/suspend pv k))))]
+        [(_ (generator (yield) (v) b))
+            (and (identifier? #'v) (identifier? #'yield))
+            #'(lambda (k)
+                (k (let ([where-to-go (lambda (v) (error 'where-to-go "nothing"))])
+                    (letrec ([resumer (lambda (v)
+                                        ((cps b) (lambda (k)
+                                            (error 'generator "fell through"))))]
+                            [yield (lambda (v gen-k)
+                                    (begin
+                                        (set! resumer gen-k)
+                                        (where-to-go v)))])
+                            (lambda (v dyn-k)
+                                (begin
+                                    (set! where-to-go dyn-k)
+                                    (resumer v)))))))]
+        [(_ (let/cc kont b))
+            (identifier? #'kont)
+            #'(lambda (k)
+                (let ([kont (lambda (v dyn-k)
+                                (k v))])
+                    ((cps b) k)))]
         [(_ (seq e1 e2))
             #'(lambda (k)
                 ((cps e1) (lambda (_)
@@ -70,36 +91,14 @@
                                         (k (f av bv)))))))]
         [(_ atomic)
             #'(lambda (k) (k atomic))]
-        [(_ (generator (yield) (v) b))
-            (and (identifier? #'v) (identifier? #'yield))
-            #'(lambda (k)
-                (k (let ([where-to-go (lambda (v) (error 'where-to-go "nothing"))])
-                    (letrec ([resumer (lambda (v)
-                                        ((cps b) (lambda (k)
-                                            (error 'generator "fell through"))))]
-                            [yield (lambda (v gen-k)
-                                    (begin
-                                        (set! resumer gen-k)
-                                        (where-to-go v)))])
-                            (lambda (v dyn-k)
-                                (begin
-                                    (set! where-to-go dyn-k)
-                                    (resumer v)))))))]
-        [(_ (let/cc kont b))
-            (identifier? #'kont)
-            #'(lambda (k)
-                (let ([kont (lambda (v dyn-k)
-                                (k v))])
-                    ((cps b) k)))]))
+))
 
 (define (run c) (c identity))
 
-(cps (lam (x) 5))
 (test (run (cps 3)) 3)
 ;(test (run (cps ((lam () 5) ))) 5)
 (test (run (cps ((lam (x) (* x x)) 5))) 25)
 (test (run (cps (+ 5 ((lam (x) (* x x)) 5)))) 30)
 
 
-(test (run (cps (+ 1 (let/cc esc (+ 2 (esc 3))))))
-4)
+(test (run (cps (+ 1 (let/cc knot (+ 2 (knot 3)))))) 4)
