@@ -6,7 +6,8 @@
     [appC (fun : TyExprC) (arg : TyExprC)]
     [plusC (l : TyExprC) (r : TyExprC)]
     [multC (l : TyExprC) (r : TyExprC)]
-    [lamC (arg : symbol) (argT : Type) (retT : Type) (body : TyExprC)])
+    [lamC (arg : symbol) (argT : Type) (retT : Type) (body : TyExprC)]
+    [recC (f : symbol) (arg : symbol) (argT : Type) (retT : Type) (body : TyExprC) (use : TyExprC)])
 
 (define-type-alias Env (listof number))   ;dummy
 (define-type Value
@@ -57,7 +58,17 @@
     [lamC (a argT retT b)
         (if (equal? (tc b (extend-ty-env (bind a argT) tenv)) retT)
             (funT argT retT)
-            (error 'tc "lam type mismatch"))]))
+            (error 'tc "lam type mismatch"))]
+    [recC (f a aT rT b u)
+(let ([extended-env
+(extend-ty-env (bind f (funT aT rT)) tenv)])
+(cond
+[(not (equal? rT (tc b
+(extend-ty-env
+(bind a aT)
+extended-env))))
+(error 'tc "body return type not correct")]
+[else (tc u extended-env)]))]))
 
 
 
